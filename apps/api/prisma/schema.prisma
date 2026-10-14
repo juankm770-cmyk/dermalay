@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum DoctorStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+model User {
+  id            String         @id @default(uuid())
+  role          Role           @default(PATIENT)
+  email         String?        @unique
+  phone         String?        @unique
+  firebaseUid   String?        @unique
+  passwordHash  String?
+  fullName      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+  conversations Conversation[]
+  messages      Message[]
+}
+
+model City {
+  id      String   @id @default(uuid())
+  name    String
+  slug    String   @unique
+  doctors Doctor[]
+}
+
+model Specialty {
+  id      String            @id @default(uuid())
+  name    String
+  slug    String            @unique
+  icon    String?
+  doctors DoctorSpecialty[]
+}
+
+model Doctor {
+  id              String            @id @default(uuid())
+  fullName        String
+  slug            String            @unique
+  bio             String
+  photoUrl        String?
+  videoUrl        String?
+  cityId          String
+  city            City              @relation(fields: [cityId], references: [id])
+  consultationFee Int
+  ratingAvg       Float             @default(0)
+  ratingCount     Int               @default(0)
+  status          DoctorStatus      @default(DRAFT)
+  registroMedico  String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  specialties     DoctorSpecialty[]
+  slots           AvailabilitySlot[]
+  conversations   Conversation[]
+
+  @@index([cityId, status])
+}
+
+model DoctorSpecialty {
+  doctorId    String
+  specialtyId String
+  doctor      Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  specialty   Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@id([doctorId, specialtyId])
+}
+
+model AvailabilitySlot {
+  id       String   @id @default(uuid())
+  doctorId String
+  doctor   Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  startsAt DateTime
+  endsAt   DateTime
+  booked   Boolean  @default(false)
+
+  @@index([doctorId, startsAt])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  patientId String
+  doctorId  String
+  patient   User      @relation(fields: [patientId], references: [id])
+  doctor    Doctor    @relation(fields: [doctorId], references: [id])
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@unique([patientId, doctorId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
