@@ -5,7 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { App, cert, initializeApp } from 'firebase-admin/app';
 import { DecodedIdToken, getAuth } from 'firebase-admin/auth';
 import { PrismaService } from '../prisma/prisma.service';
-import { FirebaseLoginDto, LoginDto, RegisterDto } from './auth.dto';
+import { ChangePasswordDto, FirebaseLoginDto, LoginDto, RegisterDto } from './auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -65,6 +65,14 @@ export class AuthService {
       },
     });
     return this.token(user);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash || !(await bcrypt.compare(dto.current, user.passwordHash))) {
+      throw new UnauthorizedException('Contraseña actual incorrecta');
+    }
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.next, 12) } });
   }
 
   /** Borrado de cuenta (requisito de Google Play). */

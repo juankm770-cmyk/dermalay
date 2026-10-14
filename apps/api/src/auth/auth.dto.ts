@@ -14,3 +14,8 @@ export class LoginDto {
 export class FirebaseLoginDto {
   @IsString() idToken!: string;
 }
+
+export class ChangePasswordDto {
+  @IsString() @MaxLength(72) current!: string;
+  @IsString() @MinLength(8) @MaxLength(72) next!: string;
+}
